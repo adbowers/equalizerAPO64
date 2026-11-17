@@ -272,6 +272,10 @@ jobs:
           }
           Write-Host "Building with instruction set: $instructionSet (variant: ${{ matrix.simd_variant }})"
           $buildParams += "/p:EnableEnhancedInstructionSet=$instructionSet"
+        } elseif ($BuildPlatform -eq "ARM64") {
+          # Use the native ARM64-hosted compiler; MSBuild otherwise picks the 32-bit HostX86 cross
+          # compiler, which runs out of address space mapping PCHs (C3859/C1076) under /MP
+          $buildParams += "/p:PreferredToolArchitecture=arm64"
         }
 
         foreach ($project in $projects) {
