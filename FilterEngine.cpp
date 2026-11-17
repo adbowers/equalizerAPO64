@@ -124,19 +124,22 @@ FilterEngine::~FilterEngine()
 }
 
 void FilterEngine::resizeBuffers(unsigned frameCount) {
-	if (allocatedFrameCount < frameCount || inputBuf2D.size() != inputChannelCount || outputBuf2D.size() != outputChannelCount) {
+	// FilterConfiguration::read consumes realChannelCount channels, which differs from inputChannelCount
+	// when a child APO changes the channel count, so the input buffers must hold whichever is larger
+	unsigned readChannelCount = max(inputChannelCount, realChannelCount);
+	if (allocatedFrameCount < frameCount || inputBuf2D.size() != readChannelCount || outputBuf2D.size() != outputChannelCount) {
 
-		TraceF(L"Reallocating internal double-precision buffers for %u frames and %u/%u channels.", frameCount, inputChannelCount, outputChannelCount);
+		TraceF(L"Reallocating internal double-precision buffers for %u frames and %u/%u channels.", frameCount, readChannelCount, outputChannelCount);
 		allocatedFrameCount = frameCount;
 
 		// Resize 1D buffers (for interleaved audio)
 		try {
-			inputBuf1D.resize(inputChannelCount * frameCount);
+			inputBuf1D.resize(readChannelCount * frameCount);
 			outputBuf1D.resize(outputChannelCount * frameCount);
 
 			// Resize 2D buffers (for non-interleaved audio)
-			inputBuf2D.resize(inputChannelCount);
-			for (unsigned i = 0; i < inputChannelCount; ++i) {
+			inputBuf2D.resize(readChannelCount);
+			for (unsigned i = 0; i < readChannelCount; ++i) {
 				inputBuf2D[i] = make_unique<double[]>(frameCount);
 			}
 			outputBuf2D.resize(outputChannelCount);
@@ -492,8 +495,8 @@ void FilterEngine::process(float* output, float* input, unsigned frameCount)
 	// Ensure our internal buffers are large enough
 	resizeBuffers(frameCount);
 
-	// Conversion from float to double using SIMD
-	const unsigned inputSampleCount = inputChannelCount * frameCount;
+	// Conversion from float to double using SIMD; read() deinterleaves realChannelCount channels
+	const unsigned inputSampleCount = realChannelCount * frameCount;
 	convertFloatToDouble(inputBuf1D.data(), input, inputSampleCount);
 
 	// The core processing logic remains unchanged
@@ -539,13 +542,13 @@ void FilterEngine::process(float** output, float** input, unsigned frameCount)
 	resizeBuffers(frameCount);
 
 	// Create temporary raw pointer arrays for the FilterConfiguration interface
-	vector<double*> tempInputPtrs(inputChannelCount);
+	vector<double*> tempInputPtrs(realChannelCount);
 	vector<double*> tempOutputPtrs(outputChannelCount);
-	for (unsigned i = 0; i < inputChannelCount; ++i) tempInputPtrs[i] = inputBuf2D[i].get();
+	for (unsigned i = 0; i < realChannelCount; ++i) tempInputPtrs[i] = inputBuf2D[i].get();
 	for (unsigned i = 0; i < outputChannelCount; ++i) tempOutputPtrs[i] = outputBuf2D[i].get();
 
 	// Optimized conversion for each channel
-	for (unsigned c = 0; c < inputChannelCount; c++) {
+	for (unsigned c = 0; c < realChannelCount; c++) {
 		convertFloatToDouble(inputBuf2D[c].get(), input[c], frameCount);
 	}
 
