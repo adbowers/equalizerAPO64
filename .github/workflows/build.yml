@@ -207,7 +207,6 @@ jobs:
         install-deps: 'true'
         set-env: 'true'
         setup-python: 'false'
-        extra: '--external 7z'
 
     # Build the solution (excluding Qt VS Tools projects which will be built separately)
     - name: Build solution
