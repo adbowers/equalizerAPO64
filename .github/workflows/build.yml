@@ -273,9 +273,10 @@ jobs:
           Write-Host "Building with instruction set: $instructionSet (variant: ${{ matrix.simd_variant }})"
           $buildParams += "/p:EnableEnhancedInstructionSet=$instructionSet"
         } elseif ($BuildPlatform -eq "ARM64") {
-          # The windows-11-arm runner builds with the HostX86 cross compiler; parallel /MP instances
-          # each reserve PCH memory and exhaust the commit limit (C3859/C1076), so compile serially
-          $buildParams += "/p:CL_MPCount=1"
+          # Without this the windows-11-arm runner uses the 32-bit HostX86\arm64 compiler, which
+          # intermittently cannot map precompiled headers at their base address (C3859/C1076).
+          # The runner has no ARM64-hosted tools, so use the 64-bit x64-hosted cross compiler.
+          $buildParams += "/p:PreferredToolArchitecture=x64"
         }
 
         foreach ($project in $projects) {
