@@ -78,47 +78,25 @@ jobs:
     - name: Setup NuGet
       uses: NuGet/setup-nuget@v2
 
-    # Download FFTW from amd-fftw repository artifacts
-    - name: Download FFTW artifacts
-      uses: dawidd6/action-download-artifact@v3
-      with:
-        github_token: ${{ secrets.GH_PAT }}
-        workflow: c-cpp.yml
-        repo: TheFireKahuna/amd-fftw
-        name: ${{ matrix.fftw_artifact }}
-        path: ${{ github.workspace }}\deps\fftw
-        check_artifacts: true
-        search_artifacts: true
-        workflow_conclusion: success
-        allow_forks: true
-
-    # Download muParserX from repository artifacts
-    - name: Download muParserX artifacts
-      uses: dawidd6/action-download-artifact@v3
-      with:
-        github_token: ${{ secrets.GH_PAT }}
-        workflow: c-cpp.yml
-        repo: TheFireKahuna/muparserx
-        name: ${{ matrix.muparserx_artifact }}
-        path: ${{ github.workspace }}\deps\muparserx
-        check_artifacts: true
-        search_artifacts: true
-        workflow_conclusion: success
-        allow_forks: true
-
-    # Download muParserX from repository artifacts
-    - name: Download libsndfile artifacts
-      uses: dawidd6/action-download-artifact@v3
-      with:
-        github_token: ${{ secrets.GH_PAT }}
-        workflow: action.yml
-        repo: TheFireKahuna/libsndfile
-        name: ${{ matrix.libsndfile_artifact }}
-        path: ${{ github.workspace }}\deps\libsndfile
-        check_artifacts: true
-        search_artifacts: true
-        workflow_conclusion: success
-        allow_forks: true
+    # Download prebuilt dependencies from the pinned GitHub releases of the
+    # TheFireKahuna dependency forks (workflow artifacts expire after 90 days)
+    - name: Download dependency releases
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        $deps = "${{ github.workspace }}\deps"
+        $sets = @(
+          @{ Repo = "TheFireKahuna/amd-fftw";   Tag = "5.1";    Asset = "${{ matrix.fftw_artifact }}";       Dir = "fftw" },
+          @{ Repo = "TheFireKahuna/muparserx";  Tag = "4.0.13"; Asset = "${{ matrix.muparserx_artifact }}";  Dir = "muparserx" },
+          @{ Repo = "TheFireKahuna/libsndfile"; Tag = "1.2.2";  Asset = "${{ matrix.libsndfile_artifact }}"; Dir = "libsndfile" }
+        )
+        foreach ($s in $sets) {
+          $zipDir = "$deps\zips"
+          gh release download $s.Tag --repo $s.Repo --pattern "$($s.Asset).zip" --dir $zipDir --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Failed to download $($s.Asset).zip from $($s.Repo) $($s.Tag)" }
+          Expand-Archive -Path "$zipDir\$($s.Asset).zip" -DestinationPath "$deps\$($s.Dir)" -Force
+        }
 
     # Clone tclap repository (header-only library)
     - name: Download TCLAP
