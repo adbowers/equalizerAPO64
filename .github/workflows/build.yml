@@ -68,15 +68,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v2
+      uses: microsoft/setup-msbuild@v3
       with:
         msbuild-architecture: ${{ matrix.platform }}
 
     - name: Setup NuGet
-      uses: NuGet/setup-nuget@v2
+      uses: NuGet/setup-nuget@v4
 
     # Download prebuilt dependencies from the pinned GitHub releases of the
     # TheFireKahuna dependency forks (workflow artifacts expire after 90 days)
@@ -100,7 +100,7 @@ jobs:
 
     # Clone tclap repository (header-only library)
     - name: Download TCLAP
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         repository: TheFireKahuna/tclap
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -194,6 +194,12 @@ jobs:
         echo "TCLAP_ROOT=$depsPath\tclap" >> $env:GITHUB_ENV
 
         Write-Host "`nAll dependency paths configured successfully"
+
+    # aqtinstall (used by install-qt-action) warns that Python < 3.14 can misdetect archive types
+    - name: Setup Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.14'
 
     # Install Qt for Editor, DeviceSelector, and UpdateChecker
     - name: Install Qt
@@ -506,7 +512,7 @@ jobs:
 
     # Upload artifacts
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: EqualizerAPO-${{ matrix.platform }}-${{ matrix.simd_variant }}
         path: |
@@ -547,10 +553,10 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Download all artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         path: ${{ github.workspace }}\artifacts
 
@@ -650,7 +656,7 @@ jobs:
       run: makensis ${{ github.workspace }}\Setup\${{ matrix.setup_file }}.nsi
 
     - name: Upload installers
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: EqualizerAPO_Setup-${{ matrix.installer_name }}
         path: ${{ github.workspace }}\Setup\*.exe
